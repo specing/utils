@@ -1,0 +1,99 @@
+#!/bin/bash
+
+ionice -c 3 -p $$
+renice -n 15 -p $$
+
+# change this
+PORTDIR="/data/portage/tree/"
+SQUASH_SOURCE="/data/portage/tree.squashfs"
+
+TMPFS="/tmp"
+TMPDIR="portage_tree_rw"
+TMPFS_DEST="/tmp/portage_tree_merge"
+
+# 1 = ask before running every command (do this the first time)
+# 0 = just do it
+TESTING=1
+
+SQUASH_OPTS="-comp xz -b 1M -force-uid portage -force-gid portage"
+
+# for testing purpuses
+run() {
+	if [[ $TESTING -eq 0 ]]; then
+		printf "Running %s...\n" "$*"
+	else
+		printf "Run %s ? (y/n) " "$*"
+
+		read a
+		if [[ $a != y* ]]; then
+			printf " Not running %s.\n" "$*"
+			return;
+		fi
+	fi
+
+	eval $*
+	if [[ $? -ne 0 ]]; then
+		printf "Command returned %s\n" "$?"
+		read wait_
+	fi
+}
+
+if ! $(grep -q squashfs /proc/filesystems); then
+	printf "You don't have SquashFS support in /proc/filesystems\n"
+	return 1;
+fi
+
+if ! $(mount | grep -q " $TMPFS .* tmpfs "); then
+	printf "Please ensure %s is a real tmpfs\n" "$TMPFS"
+	return 1;
+fi
+
+
+
+# make sure the old squashfs image is mounted
+if ! $(grep -q "$SQUASH_SOURCE" /proc/mounts); then
+	run mount -o ro $SQUASH_SOURCE $PORTDIR
+fi
+
+
+if grep -q aufs /proc/filesystems; then
+
+	run mkdir "$TMPFS/$TMPDIR"
+	run mkdir "$TMPFS_DEST"
+
+	run mount -t aufs treemerge -o "br:$TMPFS/$TMPDIR:$PORTDIR" "$TMPFS_DEST"
+	
+	run PORTDIR="$TMPFS_DEST" emerge --sync --quiet
+
+	run mksquashfs "$TMPFS_DEST" "$SQUASH_SOURCE.new" $SQUASH_OPTS
+	run umount "$TMPFS_DEST"
+	run rmdir $TMPFS_DEST
+	run umount "$PORTDIR"
+	run rm -r "$TMPFS/$TMPDIR"
+
+#	run umount "$PORTDIR"
+	run mv "$SQUASH_SOURCE.new" "$SQUASH_SOURCE"
+
+	run mount -o ro "$SQUASH_SOURCE" "$PORTDIR"
+
+else
+# TODO: check if there is enaugh space on tmpfs
+# TODO: check if there is enaugh ram
+
+
+	printf "Falling back to the old rsync way\n"
+
+	run rsync -au $PORTDIR $TMPFS_DEST
+	run mount --bind $TMPFS_DEST $PORTDIR
+	
+	run emerge --sync --quiet
+
+	run umount $PORTDIR # bind mount
+	run umount $PORTDIR # old squashfs
+	run mv $SQUASH_SOURCE /tmp/ # backup
+	run mksquashfs $TMPFS_DEST $SQUASH_SOURCE $SQUASH_OPTS
+	run rm -r $TMPFS_DEST
+
+	run mount -o ro $SQUASH_SOURCE $PORTDIR
+
+fi
