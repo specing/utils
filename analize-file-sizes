@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+
+import os, math, sys
+
+# param x: file size in bytes
+# returns a string with the size and the extension
+def human_size (x, format = "%.2f %s"):
+	if x < 1024:
+		return format % (x, "B")
+	
+	x /= 1024.0
+	if x < 1024:
+		return format % (x, "KiB")
+
+	x /= 1024.0
+	if x < 1024:
+		return format % (x, "MiB")
+
+	x /= 1024.0
+	return format % (x, "GiB")
+
+
+def inspect_path (data, path):
+	if not os.access (path, os.F_OK | os.R_OK | os.X_OK):
+		print ("Unable to access: " + path)
+		return
+
+	files = os.listdir (path)
+#	print ("%10d files in %s" % (len (files), path))
+
+	for f in files:
+		cur = path + os.sep + f
+#		print ("Inspecting " + cur)
+		if os.path.islink (cur):
+			# do nothing
+			data.total_symlinks += 1
+
+		elif os.path.isdir (cur):
+#			print (" Recursing into " + cur)
+			inspect_path (data, cur)
+		
+		elif os.path.isfile (cur):
+			size = os.stat(cur).st_size
+
+			data.total_files += 1
+			data.total_size += size
+
+			if size > 1024 * 1024 * 10:
+				print ("Huge file detected: %10s: %s" % (human_size(size), cur))
+
+#			print ("%10d   %s" % (size, cur))
+			if size != 0:
+				data.sizes [int(math.floor (math.log (size, 2)))] += 1
+		else:
+			print ("Unknown file type: " + cur)
+
+
+
+class Data:
+	sizes = [ 0 ] * 32
+	total_size = 0
+	total_files = 0
+	total_symlinks = 0
+
+for d in sys.argv[1:]:
+	print ("=" * 70)
+	print ("Processing " + d)
+	data = Data()
+	data.sizes = [0] * 32
+	inspect_path(data, d)
+
+	print ("Total files: %d, total size: %s, average size: %s" % (data.total_files, human_size(data.total_size), human_size(data.total_size / data.total_files)))
+	for s in range (0, 32):
+		print ("size [%8s, %8s): %d" % (human_size(2 ** s, "%.0f %s"), human_size(2 ** (s+1), "%.0f %s"), data.sizes[s]))
+
