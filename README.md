@@ -8,5 +8,4 @@ Im sure you can find a copy of the license floating around the 'net
 UTILITIES
 ------------------------------------------------------------------------------
  - ptree-update 
- 	Maintain a compressed (SQuashFS) image of the Portage tree 
-	using either AUFS or rsync to tmpfs
+ 	- Maintain a compressed (SQuashFS) image of the Portage tree using either AUFS or rsync to tmpfs
