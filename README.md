@@ -10,4 +10,4 @@ UTILITIES
  - ptree-update 
  	- Maintain a compressed (SQuashFS) image of the Portage tree using either AUFS or rsync to tmpfs
  - analize-file-sizes
-	- Print how many files are there in size ranges: [ 2^n, 2^(n+1) ) for every n = 0,..,32
+	- Print how many files are there in size ranges: [ 2^n, 2^(n+1) ) for every n = 0,..,31
