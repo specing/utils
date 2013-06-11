@@ -1,0 +1,99 @@
+#!/bin/bash
+
+# example usage:
+# files=($(find . -name "*PATTERN.log"))
+# for file in  ${files[@]}; do
+# 	if [[ -f "second/$file" ]]; then
+#		./merge_logs "$file" "second/$file";
+#	fi;
+# done;
+
+
+first_log="$1"
+second_log="$2"
+merged_log="$3"
+if [[ -z "$merged_log" ]]; then
+	mkdir -p merged
+	merged_log="merged/${second_log##*/}"
+fi
+
+mapfile first < "$first_log"
+mapfile second < "$second_log"
+
+f_lines=${#first[@]}
+s_lines=${#second[@]}
+
+
+first_lineno=0
+second_lineno=0
+
+printf "first: \"%s\", lines: %s\n" "$first_log" "$f_lines"
+printf "second: \"%s\", lines: %s\n" "$second_log" "$s_lines"
+
+while [[ $first_lineno -lt $f_lines ]]; do
+
+	f_line="${first[$first_lineno]}"
+	s_line="${second[$second_lineno]}"
+	f_compare="${f_line:10}"
+	s_compare="${s_line:10}"
+
+	if [[ "$f_compare" == "$s_compare" ]]; then
+		printf "first (%s) and second (%s) match!\n" "$first_lineno" "$second_lineno"
+		printf "=>  first: %s" "$f_line"
+		printf "=> second: %s" "$s_line"
+
+		# found first matching, ensure the match goes to the end of file
+		printf "\nchecking if this is a match to the end of the first file:\n"
+
+		f_lineno=$first_lineno
+		s_lineno=$second_lineno
+		while [[ f_lineno -lt f_lines ]]; do
+			f_line="${first[$f_lineno]}"
+			s_line="${second[$s_lineno]}"
+			f_compare="${f_line:10}"
+			s_compare="${s_line:10}"
+
+			printf "  first: %s" "$f_line"
+			printf " second: %s" "$s_line"
+			if [[ "$f_compare" == "$s_compare" ]]; then
+				printf " => first (%s) and second (%s) match!\n" "$f_lineno" "$s_lineno"
+			else
+				printf " => first (%s) and second (%s) DONT match!\n" "$f_lineno" "$s_lineno"
+
+				# resume the first loop as this is just a stray match before the end.
+				second_lineno=0
+				continue 2
+			fi
+	
+			((f_lineno++))
+			((s_lineno++))
+		done
+
+		# loop completed without errors, end
+		break
+	fi
+	((first_lineno++))
+done
+
+end_of_first=$first_lineno
+
+((first_lineno++))
+((second_lineno++))
+
+if [[ end_of_first -eq f_lines ]]; then
+	printf "files don't have common lines, clamping them together\n"
+fi
+
+# print the resulting file
+f_lineno=0
+while [[ f_lineno -lt end_of_first ]]; do
+	printf "%s" "${first[$f_lineno]}" >> "$merged_log"
+	(( f_lineno++ ))
+done
+
+for line in "${second[@]}"; do
+	printf "%s" "$line" >> "$merged_log"
+done
+
+printf "Successfully merged\n\n"
+
