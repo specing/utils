@@ -17,3 +17,8 @@ UTILITIES
  - analize-file-sizes 
  	- $ analize-file-sizes directory
 	- Print how many files are there in size ranges: [ 2^n, 2^(n+1) ) for every n = 0,..,31
+ - merge_log
+	- $ merge_log earlier.log latter.log [merged.log]
+	- merge two log files together removing the duplicate section (taking the lines from the second log).
+	- start of the line (timestamp) is ignored when comparing lines for equality
+	- CURRENTLY NOT FLEXIBLE AND PROBABLY BROKEN
