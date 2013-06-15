@@ -31,7 +31,7 @@ run() {
 		fi
 	fi
 
-	eval $*
+	eval "$@"
 	if [[ $? -ne 0 ]]; then
 		printf "Command returned %s\n" "$?"
 		read wait_
@@ -52,7 +52,7 @@ fi
 
 # make sure the old squashfs image is mounted
 if ! $(grep -q "$SQUASH_SOURCE" /proc/mounts); then
-	run mount -o ro $SQUASH_SOURCE $PORTDIR
+	run mount -o ro "$SQUASH_SOURCE" "$PORTDIR"
 fi
 
 
@@ -67,7 +67,7 @@ if grep -q aufs /proc/filesystems; then
 
 	run mksquashfs "$TMPFS_DEST" "$SQUASH_SOURCE.new" $SQUASH_OPTS
 	run umount "$TMPFS_DEST"
-	run rmdir $TMPFS_DEST
+	run rmdir "$TMPFS_DEST"
 	run umount "$PORTDIR"
 	run rm -r "$TMPFS/$TMPDIR"
 
