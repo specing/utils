@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# Invoke with ./deduplicate {1..somenumber} for number order
+#  - this will guess the file names (missing will be ignored)
+# or with ./deduplicate * to check them all in lexicographical order
+
+declare -A sum_map
+
+for message in "$@"; do
+	if [[ ! -f "$message" ]]; then
+		continue
+	fi
+
+	sum="$(sha512sum -b "$message")"
+	sum="${sum%% *}" # remove everything but the sum
+
+	if [[ -z ${sum_map[$sum]} ]]; then
+		printf "inserting %s -> %s\n" "$sum" "$message"
+		sum_map[$sum]="$message"
+
+	else
+		printf "dedup %s -> %s\n => from: %s\n" "$sum" "$message" "${sum_map[$sum]}"
+		rm "$message"
+	fi
+
+done
