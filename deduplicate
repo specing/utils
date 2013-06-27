@@ -4,6 +4,12 @@
 #  - this will guess the file names (missing will be ignored)
 # or with ./deduplicate * to check them all in lexicographical order
 
+
+if ! mkdir duplicates; then
+	printf "unable to create a directory for storing duplicates.\n"
+	return 1
+fi
+
 declare -A sum_map
 
 for message in "$@"; do
@@ -20,7 +26,15 @@ for message in "$@"; do
 
 	else
 		printf "dedup %s -> %s\n => from: %s\n" "$sum" "$message" "${sum_map[$sum]}"
-		rm "$message"
+		mv "$message" duplicates
 	fi
 
 done
+
+if [[ duplicates/* == "duplicates/*" ]]; then
+	printf "There were no duplicates.\n"
+	rmdir duplicates
+else
+	num=(duplicates*)
+	printf "There are %s duplicates in duplicates/.\n" "${#num[@]}"
+fi
